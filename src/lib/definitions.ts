@@ -1,0 +1,41 @@
+// TypeScript type for the grade_distributions table
+
+export type GradeDistributionTable = {
+  id?: number;
+  term: string;
+  crs_subj_cd: string | null;
+  crs_nbr: string | null;
+  crs_subj_desc: string | null;
+  crn: string | null;
+  sched_type_cd: string | null;
+  sched_type_desc: string | null;
+  itype: string | null;
+  sess_cd: string | null;
+  crs_title: string | null;
+  dept_cd: string | null;
+  dept_name: string | null;
+  a: number;
+  ah: number;
+  b: number;
+  bh: number;
+  c: number;
+  d: number;
+  f: number;
+  adv: number;
+  cr: number;
+  dfr: number;
+  i: number;
+  ng: number;
+  nr: number;
+  o: number;
+  pr: number;
+  ps: number;
+  s: number;
+  sh: number;
+  u: number;
+  w: number;
+  primary_instructor: string | null;
+  name2: string | null;
+  name3: string | null;
+  grade_regs: number;
+};
