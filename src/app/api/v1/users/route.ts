@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserEmail, deleteUser, isValidEmail } from "@/lib/auth";
+import { updateUser, deleteUser, isValidEmail } from "@/lib/auth";
 
 // PUT /api/v1/users - Update user email (user-initiated)
 export async function PUT(req: NextRequest) {
@@ -16,7 +16,7 @@ export async function PUT(req: NextRequest) {
       { status: 400 }
     );
   }
-  const { success, error } = await updateUserEmail(userId, newEmail);
+  const { success, error } = await updateUser(userId, newEmail);
   if (!success) {
     return NextResponse.json({ error }, { status: 400 });
   }

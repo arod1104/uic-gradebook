@@ -86,7 +86,7 @@ export async function registerUserAndApiKey({
  * @param newEmail - The new email address to set.
  * @returns Promise<{ success: boolean; error?: string }> - Resolves with success true if updated, or error message.
  */
-export async function updateUserEmail(
+export async function updateUser(
   userId: string,
   newEmail: string
 ): Promise<{ success: boolean; error?: string }> {
