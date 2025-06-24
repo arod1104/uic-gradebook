@@ -27,26 +27,24 @@ export async function isEmailRegistered(email: string): Promise<boolean> {
 }
 
 /**
- * Registers a new user with Supabase Auth and creates an API key for them.
+ * Registers a new user with Supabase Auth and creates a profile for them.
  * @param params - An object containing email, password, firstName, lastName, and useCase.
- * @returns Promise<{ apiKey?: string; error?: string }> - Resolves with the API key if successful, or an error message.
+ * @returns Promise<{ userId?: string; error?: string }> - Resolves with the user id if successful, or an error message.
  * @remarks
  * - Supabase automatically hashes the password; it is never stored in plaintext.
- * - The API key is stored in the api_keys table and associated with the user.
+ * - The profile is stored in the public.profiles table and associated with the user.
  */
-export async function registerUserAndApiKey({
+export async function registerUser({
   email,
   password,
   firstName,
   lastName,
-  useCase,
 }: {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-  useCase: string;
-}): Promise<{ apiKey?: string; error?: string }> {
+}): Promise<{ userId?: string; error?: string }> {
   // Register user (Supabase handles password hashing)
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
@@ -63,17 +61,34 @@ export async function registerUserAndApiKey({
     return { error: signUpError?.message || "Registration failed." };
   }
 
-  // Generate API key
-  const newApiKey = uuidv4();
-
-  // Store API key
-  const { error: keyError } = await supabase.from("api_keys").insert({
-    user_id: signUpData.user.id,
-    api_key: newApiKey,
-    use_case: useCase,
-    tier: "free",
+  // Insert profile into public.profiles
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: signUpData.user.id,
+    email,
+    full_name: `${firstName} ${lastName}`,
   });
 
+  if (profileError) {
+    return { error: "Failed to save user profile. Please contact support." };
+  }
+  return { userId: signUpData.user.id };
+}
+
+/**
+ * Generates a new API key for a user and inserts it into the api_keys table.
+ * @param userId - The user's unique id (from Supabase Auth).
+ * @returns Promise<{ apiKey?: string; error?: string }> - Resolves with the API key if successful, or an error message.
+ */
+export async function generateAndSaveApiKey(
+  userId: string
+): Promise<{ apiKey?: string; error?: string }> {
+  const newApiKey = uuidv4();
+  const { error: keyError } = await supabase.from("api_keys").insert({
+    user_id: userId,
+    api_key: newApiKey,
+    tier: "free",
+    tokens: 1000,
+  });
   if (keyError) {
     return { error: "Failed to save API key. Please contact support." };
   }

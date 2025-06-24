@@ -1,40 +1,71 @@
 "use client";
-import { useState } from "react";
-import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { z } from "zod";
 import {
   Form,
   FormField,
   FormItem,
   FormLabel,
   FormControl,
-  FormDescription,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { registerUserAction } from "@/app/actions";
+import { useRouter } from "next/navigation";
+
+const passwordRequirements =
+  "8-40 characters, at least one lowercase, one uppercase, one number, and one symbol(!@#$%^&*)";
 
 const formSchema = z.object({
-  email: z.string().email(),
-  firstName: z.string().min(2, "First name required"),
-  lastName: z.string().min(2, "Last name required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  useCase: z.string().max(300).optional(),
+  firstName: z.string().min(1, "First name required"),
+  lastName: z.string().min(1, "Last name required"),
+  email: z
+    .string()
+    .refine(
+      (val) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val),
+      "Invalid email address"
+    ),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(40, "Password must be at most 40 characters")
+    .refine(
+      (val) => /[a-z]/.test(val),
+      "Password must contain at least one lowercase letter"
+    )
+    .refine(
+      (val) => /[A-Z]/.test(val),
+      "Password must contain at least one uppercase letter"
+    )
+    .refine(
+      (val) => /[0-9]/.test(val),
+      "Password must contain at least one number"
+    )
+    .refine(
+      (val) => /[!@#$%^&*]/.test(val),
+      "Password must contain at least one symbol (!@#$%^&*)"
+    ),
+  useCase: z.string().max(200).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 export default function RegisterPage() {
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const router = useRouter();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
       firstName: "",
       lastName: "",
+      email: "",
       password: "",
       useCase: "",
     },
@@ -42,22 +73,20 @@ export default function RegisterPage() {
 
   async function onSubmit(values: FormValues) {
     setError(null);
-    setApiKey(null);
-    try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        setError(result.error || "Registration failed.");
-        return;
-      }
-      setApiKey(result.apiKey);
-    } catch (err) {
-      setError("Something went wrong. Please try again later.");
+    setSuccess(null);
+    // Ensure useCase is always a string
+    const result = await registerUserAction({
+      ...values,
+      useCase: values.useCase || "",
+    });
+    if (result?.error) {
+      setError(result.error);
+      return;
     }
+    setSuccess(
+      "Registration successful! Please check your email to confirm your signup."
+    );
+    setTimeout(() => router.push("/search"), 2000);
   }
 
   return (
@@ -70,6 +99,50 @@ export default function RegisterPage() {
           Sign up for a free API key (1000 requests/day). No credit card
           required.
         </p>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {success && (
+          <Alert className="mb-4">
+            <AlertTitle>Success</AlertTitle>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
+        <div className="flex gap-4">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>
+                  First Name <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>
+                  Last Name <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
@@ -77,7 +150,9 @@ export default function RegisterPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>
+                    Email <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="" {...field} />
                   </FormControl>
@@ -85,44 +160,18 @@ export default function RegisterPage() {
                 </FormItem>
               )}
             />
-            <div className="flex gap-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
             <FormField
               control={form.control}
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>
+                    Password <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="" {...field} />
                   </FormControl>
-                  <FormDescription>At least 6 characters.</FormDescription>
+                  <FormDescription>{passwordRequirements}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -144,24 +193,10 @@ export default function RegisterPage() {
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-lg font-semibold py-2 rounded"
             >
-              Generate API Key
+              Register
             </Button>
           </form>
         </Form>
-        {error && <div className="mt-4 text-red-600 text-center">{error}</div>}
-        {apiKey && (
-          <div className="mt-6 bg-green-50 border border-green-300 rounded p-4 text-center">
-            <div className="text-green-700 font-semibold mb-2">
-              Your API Key:
-            </div>
-            <div className="font-mono text-green-900 text-lg break-all select-all">
-              {apiKey}
-            </div>
-            <div className="text-xs text-gray-500 mt-2">
-              Please save this key. It will not be shown again.
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
